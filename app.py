@@ -1,91 +1,121 @@
-# Authentication
-
-"""
-Implement a complete authentication system
-"""
-
-# Grocery Products
-
-"""
-Manage grocery products with functionality to add, update, and delete products
-"""
-
-# Email Notification System
-
-"""
-Notify users via email when the quantity of a grocery product is reduced
-"""
-
-# app.py
-
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
-from flask_mail import Mail, Message
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required
+from flask_cors import CORS
+from werkzeug.security import generate_password_hash, check_password_hash
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import os
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'your_email@gmail.com'
-app.config['MAIL_PASSWORD'] = 'your_password'
+CORS(app)
 
+# Configurations
+app.config['SECRET_KEY'] = 'your_secret_key'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-mail = Mail(app)
-login_manager = LoginManager(app)
 
-class User(db.Model, UserMixin):
+# Models
+class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(150), unique=True, nullable=False)
-    password = db.Column(db.String(150), nullable=False)
-
+    username = db.Column(db.String(150), unique=True)
+    password = db.Column(db.String(150))    
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(150), nullable=False)
-    quantity = db.Column(db.Integer, nullable=False)
+    name = db.Column(db.String(150))
+    quantity = db.Column(db.Integer)
 
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
+class Proposal(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    # Other proposal fields
+
+# Initialize DB
+db.create_all()
+
+# Email Notification Function
+def send_email(subject, body, receivers):
+    sender_email = "your_email@gmail.com"
+    sender_password = "your_email_password"
+    
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = ', '.join(receivers)
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+
+    with smtplib.SMTP('smtp.gmail.com', 587) as server:
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.send_message(msg)
+
+# User Routes
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.json
+    hashed_password = generate_password_hash(data['password'], method='sha256')
+    new_user = User(username=data['username'], password=hashed_password)
+    db.session.add(new_user)
+    db.session.commit()
+    return jsonify({"message": "User registered"}), 201
 
 @app.route('/login', methods=['POST'])
 def login():
-    email = request.json.get('email')
-    password = request.json.get('password')
-    user = User.query.filter_by(email=email).first()
-    if user and user.password == password:
-        login_user(user)
-        return jsonify({'message': 'Login successful'}), 200
-    return jsonify({'message': 'Invalid credentials'}), 401
+    data = request.json
+    user = User.query.filter_by(username=data['username']).first()
+    if user and check_password_hash(user.password, data['password']):
+        session['user_id'] = user.id
+        return jsonify({"message": "Logged in"}), 200
+    return jsonify({"message": "Invalid credentials"}), 401
 
-@app.route('/logout')
-@login_required
+@app.route('/logout', methods=['POST'])
 def logout():
-    logout_user()
-    return jsonify({'message': 'Logout successful'}), 200
+    session.pop('user_id', None)
+    return jsonify({"message": "Logged out"}), 200
 
+# Product Routes
 @app.route('/products', methods=['POST'])
 def add_product():
-    name = request.json.get('name')
-    quantity = request.json.get('quantity')
-    new_product = Product(name=name, quantity=quantity)
+    data = request.json
+    new_product = Product(name=data['name'], quantity=data['quantity'])
     db.session.add(new_product)
     db.session.commit()
-    return jsonify({'message': 'Product added'}), 201
+    return jsonify({"message": "Product added"}), 201
 
-@app.route('/reduce_quantity/<int:product_id>', methods=['PATCH'])
-def reduce_quantity(product_id):
-    product = Product.query.get(product_id)
+@app.route('/products/<int:id>', methods=['PUT'])
+def update_product(id):
+    data = request.json
+    product = Product.query.get(id)
     if product:
-        product.quantity -= 1
+        product.name = data['name']
+        product.quantity = data['quantity']
         db.session.commit()
+        return jsonify({"message": "Product updated"}), 200
+    return jsonify({"message": "Product not found"}), 404
+
+@app.route('/products/<int:id>/reduce_quantity', methods=['POST'])
+def reduce_quantity(id):
+    data = request.json
+    product = Product.query.get(id)
+    if product and product.quantity >= data['quantity']:
+        product.quantity -= data['quantity']
+        db.session.commit()
+        
         # Send email notification
-        msg = Message('Quantity Reduced', sender='your_email@gmail.com', recipients=[user.email])
-        msg.body = f'The quantity of {product.name} has been reduced. New quantity: {product.quantity}'
-        mail.send(msg)
-        return jsonify({'message': 'Quantity reduced and notification sent'}), 200
-    return jsonify({'message': 'Product not found'}), 404
+        send_email("Product Quantity Reduced", 
+                   f"Reduced quantity of {product.name} by {data['quantity']}. New quantity: {product.quantity}",
+                   ["Jeevaperumal1128@gmail.com", data['buyer_email']])
+        
+        return jsonify({"message": "Quantity reduced"}), 200
+    return jsonify({"message": "Product not found or insufficient quantity"}), 404
+
+@app.route('/products', methods=['GET'])
+def list_products():
+    products = Product.query.all()
+    return jsonify([{"id": p.id, "name": p.name, "quantity": p.quantity} for p in products]), 200
+
+# Existing Proposal Routes
+# (Add your existing routes here)
 
 if __name__ == '__main__':
     app.run(debug=True)
