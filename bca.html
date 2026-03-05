@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <script src="style.js" defer></script>
+    <title>Automated Sales Proposal Generator</title>
+ 
+</head>
+<body>
+    <div class="container">
+        <!-- Form Section -->
+        <div class="form-section">
+            <h1>📋 Proposal Generator</h1>
+
+            <div id="successMessage" class="success-message"></div>
+            <div id="errorMessage" class="error-message"></div>
+
+            <h2>Company Information</h2>
+            <div class="form-group">
+                <label for="companyName">Company Name</label>
+                <input type="text" id="companyName" placeholder="Your Company Name" value="Acme Corp">
+            </div>
+            <div class="form-group">
+                <label for="companyEmail">Email</label>
+                <input type="email" id="companyEmail" placeholder="company@email.com" value="info@acmecorp.com">
+            </div>
+            <div class="form-group">
+                <label for="companyPhone">Phone</label>
+                <input type="tel" id="companyPhone" placeholder="Phone Number" value="+1-800-123-4567">
+            </div>
+
+            <h2>Client Information</h2>
+            <div class="form-group">
+                <label for="clientName">Client Name</label>
+                <input type="text" id="clientName" placeholder="Client Name" value="John Smith">
+            </div>
+            <div class="form-group">
+                <label for="clientCompany">Client Company</label>
+                <input type="text" id="clientCompany" placeholder="Client Company" value="Tech Solutions Inc">
+            </div>
+            <div class="form-group">
+                <label for="clientEmail">Client Email</label>
+                <input type="email" id="clientEmail" placeholder="client@email.com" value="john@techsolutions.com">
+            </div>
+
+            <h2>Proposal Details</h2>
+            <div class="form-group">
+                <label for="proposalTitle">Proposal Title</label>
+                <input type="text" id="proposalTitle" placeholder="Proposal Title" value="Web Development Services">
+            </div>
+            <div class="form-group">
+                <label for="proposalDate">Proposal Date</label>
+                <input type="date" id="proposalDate">
+            </div>
+            <div class="form-group">
+                <label for="expiryDate">Expiry Date</label>
+                <input type="date" id="expiryDate">
+            </div>
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" placeholder="Project description...">We are pleased to propose our comprehensive web development services for your company.</textarea>
+            </div>
+
+            <h2>Line Items</h2>
+            <div class="items-section" id="itemsContainer">
+                <!-- Items will be added here -->
+            </div>
+            <button class="btn btn-secondary" onclick="addItem()">+ Add Item</button>
+
+            <h2>Terms & Conditions</h2>
+            <div class="form-group">
+                <label for="terms">Terms</label>
+                <textarea id="terms" placeholder="Enter terms and conditions...">Payment Terms: 50% upfront, 50% upon completion. Proposal valid for 30 days.</textarea>
+            </div>
+
+            <button class="btn btn-primary" onclick="saveProposal()">💾 Save Proposal</button>
+            <button class="btn btn-download" onclick="downloadProposal()">📥 Download as PDF</button>
+            <button class="btn btn-list" onclick="showProposalsList()">📂 View All Proposals</button>
+
+        </div>
+
+        <!-- Preview Section -->
+        <div class="preview-section" id="previewSection">
+            <div id="proposalPreview"></div>
+            <div id="proposalsList" class="proposals-list" style="display: none;"></div>
+        </div>
+    </div>
+   
+
+   
+</body>
+</html>
